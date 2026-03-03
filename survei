@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Survey Lokasi & Foto</title>
+<style>
+body{
+    font-family: Arial;
+    max-width: 400px;
+    margin: auto;
+    padding: 20px;
+}
+button{
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 16px;
+}
+textarea{
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    font-size: 14px;
+}
+#photoPreview{
+    width: 100%;
+    margin-top: 10px;
+}
+.info{
+    margin-top:10px;
+    padding:8px;
+    background:#f0f0f0;
+}
+button:disabled{
+    background: #ccc;
+}
+</style>
+</head>
+<body>
+
+<h2>Form Survey Lapangan</h2>
+
+<button onclick="getLocation()">Ambil Koordinat</button>
+<div id="location" class="info"></div>
+
+<button onclick="takePhoto()">Ambil Foto</button>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+<img id="photoPreview">
+
+<textarea id="keterangan" placeholder="Isi keterangan (wajib)..."></textarea>
+
+<button id="submitBtn" onclick="sendData()" disabled>Kirim</button>
+
+<script>
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyn1tZVCkEp2myy3LK6LgHq0_US6t9OR_kSLRvVzGwOiGVG4x_1ddrXQaEvIwHNFBnm/exec";
+
+let latitude = "";
+let longitude = "";
+let photoBase64 = "";
+
+const submitBtn = document.getElementById("submitBtn");
+const keteranganField = document.getElementById("keterangan");
+
+function checkFormValid(){
+    if(latitude && photoBase64 && keteranganField.value.trim() !== ""){
+        submitBtn.disabled = false;
+    } else {
+        submitBtn.disabled = true;
+    }
+}
+
+function getLocation(){
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(function(position){
+            latitude = position.coords.latitude;
+            longitude = position.coords.longitude;
+            document.getElementById("location").innerHTML =
+                "Latitude: " + latitude + "<br>Longitude: " + longitude;
+            checkFormValid();
+        }, function(){
+            alert("Gagal ambil lokasi");
+        });
+    }
+}
+
+function takePhoto(){
+    document.getElementById("cameraInput").click();
+}
+
+document.getElementById("cameraInput").addEventListener("change", function(event){
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e){
+        photoBase64 = e.target.result;
+        document.getElementById("photoPreview").src = photoBase64;
+        checkFormValid();
+    }
+    reader.readAsDataURL(file);
+});
+
+keteranganField.addEventListener("input", checkFormValid);
+
+function sendData(){
+
+    fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+            latitude: latitude,
+            longitude: longitude,
+            keterangan: keteranganField.value.trim(),
+            photo: photoBase64
+        })
+    })
+    .then(res => res.json())
+    .then(response => {
+        alert("Data berhasil dikirim!");
+
+        // Reset form
+        latitude = "";
+        longitude = "";
+        photoBase64 = "";
+        document.getElementById("location").innerHTML = "";
+        document.getElementById("photoPreview").src = "";
+        document.getElementById("cameraInput").value = "";
+        keteranganField.value = "";
+        submitBtn.disabled = true;
+    })
+    .catch(() => alert("Gagal kirim data"));
+}
+
+</script>
+
+</body>
+</html>
